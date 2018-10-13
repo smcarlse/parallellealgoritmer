@@ -1,0 +1,265 @@
+#this script assumes that above this line, the following default strings have
+#been set:
+#    -MCBSP_PATH:   path to the POSIX threads BSPlib engine
+#    -MCBSP_LFLAGS: linker commands for the PThreads engine
+#    -BSP_LANG:     the (minimal) language requirement needed to parse bsp.h
+#    -PREF_CC:      the C compiler used during compilation
+#    -PREF_CXX:     the C++ compiler used during compilation
+
+#initialise
+COMMAND=
+NOLINK=false
+SHOW=false
+USER_CSTD=false
+ENGINE="pthread"
+MODE="normal"
+BSPSTD="201400"
+#parse command line arguments
+declare -a ARGV
+ARGC=1
+while [[ $# > 0 ]]
+do
+	ARGUMENT="$1"
+	case $ARGUMENT in
+		--help)
+			echo "Usage: `basename $0` <optional BSP flags> <your normal compiler command-line arguments>"
+			echo "       "
+			echo "       This script is a wrapper around your system default C compiler (${COMPILER})".
+			echo "       "
+			echo "       Accepted flags:"
+			echo "            --help     prints this help statement and stops"
+			echo "            --compiler use the next program argument as compiler, overriding ${COMPILER}"
+			echo "            --engine   the BSP engine to use; the possible options are:"
+			echo "                       pthread (default) -- shared-memory BSPlib."
+			echo "            --bsplib   the BSP standard to use; the possible options are:"
+			echo "                       199800           -- BSPlib as per Hill et al., 1998."
+			echo "                       201400 (default) -- BSPlib as per Yzelman et al., 2014."
+			echo "            --compat   forces the original BSPlib standard (Hill et al., 1998);"
+			echo "                       this option is equivalent to issuing \`--bsplib 199800'."
+			echo "            --legacy   forces the original BSPlib standard (Hill et al., 1998);"
+			echo "                       this option is equivalent to issuing \`--bsplib 199800'."
+			echo "            --mode     sets the BSPlib compilation mode; possible options are:"
+			echo "                       normal (default) -- performance mode with basic error checking."
+			echo "                       debug            -- full error checking, debugger-friendly"
+			echo "                                           object code."
+			echo "                       profile          -- automatic BSP profiling, output to stdout"
+			echo "                                           on program exit."
+			echo "            --debug    forces compilation in debug mode; this option is"
+			echo "                       equivalent to issuing \`--mode debug'."
+			echo "            --profile  forces compilation in profile mode; this option is"
+			echo "                       equivalent to issuing \`--mode profile'."
+			echo "            --nolink   this script will not append BSPlib linkage information to the compiler"
+			echo "                       this option is automatically set when one of the compiler command-line"
+			echo "                       arguments is \`-c'."
+			echo "            --show     show the resulting command line, but do not execute"
+			echo "            --         ends BSP-specific compiler flags; remaining flags are directly passed"
+			echo "                       through to the compiler call."
+			echo "       "
+			echo "       Whenever conflicting flags are encountered, the latter one prevails."
+			exit 0
+		;;
+		--compiler)
+			#directly set the compiler to be used (overrides the default selection below)
+			COMPILER=$2
+			shift
+		;;
+		--engine)
+			#directly set the engine
+			ENGINE=$2
+			shift
+		;;
+		--bsplib)
+			#directly select user-defined BSPlib standard
+			BSPSTD="$2"
+			shift
+		;;
+		--compat|--legacy)
+			#set BSPlib standard to the original Hill '98 version
+			BSPSTD="199800"
+		;;
+		--mode)
+			#directly set the compilation mode
+			MODE="$2"
+			shift
+		;;
+		--debug)
+			#directly set debug mode
+			MODE="debug"
+		;;
+		--profile)
+			#directly set profile mode
+			MODE="profile"
+		;;
+		--)
+			#stop parsing all arguments
+			shift
+			break
+		;;
+		-c|--nolink)
+			#check if we auto-dectected NOLINK
+			if [[ "${ARGUMENT}" = "-c" ]];
+			then
+				COMMAND="${COMMAND} -c"
+			fi
+			#prevent passing linker flags
+			NOLINK=true
+		;;
+		--std=*|--ansi)
+			#auto-detected user-defined compiler language dialect
+			USER_CSTD=true
+			ARGV[${ARGC}]=$1
+			ARGC=$((ARGC + 1))
+		;;
+		--show)
+			#directly set do-not-execute flag
+			SHOW=true
+		;;
+		*)
+			#unrecognised option, pass through to compiler/linker
+			ARGV[${ARGC}]=$1
+			ARGC=$((ARGC + 1))
+		;;
+	esac
+	shift
+done
+
+#any remaining arguments are for the compiler/linker only; copy them
+while [[ $# > 0 ]]
+do
+	ARGV[${ARGC}]=$1
+	ARGC=$((ARGC + 1))
+	shift
+done
+
+#check set options: engine
+if [[ ! "${ENGINE}" = "pthread" ]]; then
+	echo "Warning: unrecognised engine requested (${ENGINE}), falling back to default (pthread)."
+	ENGINE="pthread"
+fi
+
+#check set options: mode
+case ${MODE} in
+	normal|debug|profile)
+	;;
+	*)
+		echo "Warning: unrecognised mode requested (${MODE}), falling back to default (normal)."
+		MODE=normal
+	;;
+esac
+
+#depending on engine, set flags for selected BSPlib standard
+case ${ENGINE} in
+	pthread)
+		if [[ "${BSPSTD}" = "199800" ]]; then
+			COMMAND="${COMMAND} -DMCBSP_COMPATABILITY_MODE"
+		else
+			if [[ ! "${BSPSTD}" = "201400" ]]; then
+				echo "Warning: unrecognised BSPlib standard ($2), falling back to default (201400)"
+			fi
+		fi
+	;;
+	*)
+		echo "Error: compilation script failure. Please submit a bug report containing the full call to `basename $0` to the library maintainer."
+		exit 1
+	;;
+esac
+
+#depending on engine, set flags for selected mode
+case ${ENGINE} in
+        pthread)
+		case ${MODE} in
+			normal)
+			;;
+			debug)
+				COMMAND="${COMMAND} -DMCBSP_MODE=2"
+			;;
+			profile)
+				COMMAND="${COMMAND} -DMCBSP_MODE=3"
+			;;
+			*)
+				echo "Unrecognised BSP compilation mode (${MODE}), falling back to default mode."
+			;;
+		esac
+	;;
+	*)
+		echo "Error: compilation script failure. Please submit a bug report containing the full call to `basename $0` to the library maintainer."
+		exit 1
+	;;
+esac
+
+#if not set manually, select compiler
+if [ -z "${COMPILER}" ]; then
+	case ${BSP_LANG} in
+		c|c99)
+			if [ -z "${PREF_CC}" ]; then
+				COMPILER="cc"
+			else
+				COMPILER="${PREF_CC}"
+			fi
+		;;
+		c++|c++98|c++11)
+			if [ -z "${PREF_CXX}" ]; then
+				COMPILER="c++"
+			else
+				COMPILER="${PREF_CXX}"
+			fi
+		;;
+		*)
+			if [ -z "${PREF_CC}" ]; then
+				COMPILER="cc"
+			else
+				COMPILER="${PREF_CC}"
+			fi
+			echo "Warning: possibly unsupported or untested default language (${BSP_LANG}); falling back to system default C compiler (${COMPILER})"
+		;;
+	esac
+fi
+
+#if not set manually, select compiler language dialect
+if [[ ${USER_CSTD} = false ]]; then
+	case ${BSP_LANG} in
+		c|c99)
+			BSP_CSTD="-std=c99"
+		;;
+		c++|c++98|c++11)
+			BSP_CSTD="-std=c++98"
+		;;
+		c++11)
+			BSP_CSTD="-std=c++11"
+		;;
+		*)
+			echo "Warning: possibly unsupported or untested default language (${BSP_LANG}); will try to pass -std=${BSP_LANG} to ${COMPILER}"
+			BSP_CSTD="-std=${BSP_LANG}"
+		;;
+	esac
+
+fi
+
+#depending on engine, select install path and corresponding linker flags
+case ${ENGINE} in
+	pthread)
+		BSP_PATH=${MCBSP_PATH}
+		BSP_LFLAGS=${MCBSP_LFLAGS}
+	;;
+	*)
+		echo "Error in compilation script. Please submit a bug report containing the full call to `basename $0` to the library maintainer."
+		exit 1
+	;;
+esac
+
+#infer compiler flags
+BSP_CFLAGS="${BSP_CSTD} -I${BSP_PATH}include/"
+
+#infer linker flags
+LINK=
+if [ "${NOLINK}" = false ]; then
+	LINK="${BSP_LFLAGS}"
+fi
+
+#either show or execute the constructed command
+if [ "${SHOW}" = true ]; then
+	echo "${COMPILER} ${BSP_CFLAGS} ${COMMAND} ${ARGV[@]} ${LINK}"
+else
+	${COMPILER} ${BSP_CFLAGS} ${COMMAND} "${ARGV[@]}" ${LINK}
+fi
+

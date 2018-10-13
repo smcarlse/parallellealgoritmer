@@ -1,0 +1,16 @@
+
+Known issues (since version 2.0.3):
+
+- when compiling on OS X using GCC, you may
+  need to replace `native' with `corei7' for
+  each of the -march / -mtune flags.
+
+- the automatically generated benchmark plots
+  in benchmarks/plot_results (by executing
+  cd benchmarks && make) cannot be properly
+  plotted by Octave 4.2.2 due to a bug in its
+  `legend' built-in script. (MATLAB works.)
+  
+- when compiling with Clang prior to version
+  4.0, (harmless) warnings will be displayed.
+

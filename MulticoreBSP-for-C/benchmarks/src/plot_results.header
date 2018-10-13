@@ -1,0 +1,21 @@
+function plot_results
+%simply run this function to generate 6 to 12 plots visualising the experiment
+
+	%set the below to 1 and verify the P, bytes parameters below
+	%to enable byte/sec plots of the collective experiments (volume)
+	plot_bw = 0;
+
+	%set the below to 1 and verify the P, bytes parameters below
+	%to enable byte/sec plots of the collective experiments (h-relations)
+	plot_h  = 0;
+
+	%set to 1 to show direct plots of figures 4-6
+	direct_plot = 0;
+
+	%Set the below to the actual MPI library used for better output
+	mpiname = 'MPI';
+
+	P      = 40;
+	bytes  = [8192 98304 8388608 268435456];
+
+data = [

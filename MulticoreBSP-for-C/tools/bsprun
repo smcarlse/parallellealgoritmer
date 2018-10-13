@@ -1,0 +1,4 @@
+#!/bin/bash
+#Note that MulticoreBSP does not need a specialised runtime environment;
+#basically, this script does nothing.
+$*

@@ -1,0 +1,210 @@
+
+	second = permute( reshape( data, 4, 3, 7 ) ./ 1000, [1 3 2] );
+
+	if plot_bw == 1 
+		bw = zeros( 4, 7, 3 );
+		for i = 1:4
+			for j = 1:7
+				bw(i,j,1) = P * bytes(i) / second(i,j,1);
+				for k = 2:3
+					bw(i,j,k) = bytes(i) / second(i,j,k);
+				end
+			end
+		end
+		disp( 'Allgather bandwidth performance on exchanging a total volume of' );
+		bytes(end) * P / 1024 / 1024
+		disp( 'Megabytes:' );
+		bw(:,:,1) ./ 1024 ./ 1024
+		disp( '(in MB per second).' );
+		disp( ' ' );
+	end
+	if plot_h == 1
+		hrel   = zeros( 4, 7, 3 );
+		for i = 1:4
+			for j = 1:7
+				hrel(i,j,1) = bytes(i) / second(i,j,1);
+				for k = 2:3
+					hrel(i,j,k) = bytes(i) / second(i,j,k);
+				end
+			end
+		end
+	end
+
+	lgnd  = {'BSP put  ','BSP hpput','BSP get  ','BSP hpget','MPI put  ','MPI get  ','MPI allgather'};
+	large = data( 4:4:end ) .* 1000; %ignore all data except for the ones corresponding to RAM data movement
+	large = reshape( large, 3, 7 );
+	check = permute( reshape( log10(data .* 1000), 4, 3, 7 ), [1 3 2] );
+
+	if direct_plot == 1
+		figure(1);
+		bar( large(1,:) );
+		xlabel( 'Communication method' );
+		set( gca, 'XTick', 1:7 );
+		set( gca, 'xticklabel', lgnd );
+		ylabel( 'Time taken (in microseconds)' );
+		title( 'Comparing all-to-all communication performance using different primitives' );
+		print( "allgather", "-deps", "-color" );
+
+		figure(2);
+		bar( large(2,:) );
+		xlabel( 'Communication method' );
+		lgnd(7)='MPI gather';
+		set( gca, 'XTick', 1:7 );
+		set( gca, 'xticklabel', lgnd );
+		ylabel( 'Time taken (in microseconds)' );
+		title( 'Comparing all-to-one communication performance using different primitives' );
+		print( "gather", "-deps", "-color");
+
+		figure(3);
+		bar( large(3,:) );
+		xlabel( 'Communication method' );
+		lgnd(7)='MPI bcast';
+		set( gca, 'XTick', 1:7 );
+		set( gca, 'xticklabel', lgnd );
+		ylabel( 'Time taken (in microseconds)' );
+		title( 'Comparing one-to-all communication performance using different primitives' );
+		print( "bcast", "-deps", "-color" );
+	end
+
+	figure(4)
+	bar( check(:,:,1), 'grouped' );
+	lgnd(7)='MPI allgather';
+	legend( lgnd, 'location', 'NorthWest' );
+	xlabel( 'Communication size' );
+	set( gca, 'XTick', 1:4 );
+	set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+	ylabel( 'Time taken (10-base logarithmic scale, microseconds)' );
+	title( 'Comparing all-to-all communication performance of different sizes' );
+	print( sprintf('%s-allgather',mpiname), "-deps", "-color" );
+
+	figure(5)
+	bar( check(:,:,2), 'grouped' );
+	lgnd(7)='MPI gather';
+	legend( lgnd, 'location', 'NorthWest' );
+	xlabel( 'Communication size' );
+	set( gca, 'XTick', 1:4 );
+	set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+	ylabel( 'Time taken (10-base logarithmic scale, microseconds)' );
+	title( 'Comparing all-to-one communication performance of different sizes' );
+	print( sprintf('%s-gather',mpiname), "-deps", "-color" );
+
+	figure(6)
+	bar( check(:,:,3), 'grouped' );
+	lgnd(7)='MPI bcast';
+	legend( lgnd, 'location', 'NorthWest' );
+	xlabel( 'Communication size' );
+	set( gca, 'XTick', 1:4 );
+	set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+	ylabel( 'Time taken (10-base logarithmic scale, microseconds)' );
+	title( 'Comparing one-to-all communication performance of different sizes' );
+	print( sprintf('%s-bcast',mpiname), "-deps", "-color" );
+
+	if plot_bw == 1
+		bw = bw ./ 1024 ./ 1024 ./ 1024;
+		figure(7)
+		bar( bw(:,:,1), 'grouped' );
+		lgnd(7)='MPI allgather';
+		legend( lgnd, 'location', 'NorthWest' );
+		xlabel( 'Communication size' );
+		set( gca, 'XTick', 1:4 );
+		set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+		ylabel( 'Effective bandwidth (Gbyte/s)' );
+		title( 'Comparing all-to-all communication performance of different sizes' );
+		print( "allgather-bw", "-deps", "-color" );
+
+		figure(8)
+		bar( bw(:,:,2), 'grouped' );
+		lgnd(7)='MPI gather';
+		legend( lgnd, 'location', 'NorthWest' );
+		xlabel( 'Communication size' );
+		set( gca, 'XTick', 1:4 );
+		set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+		ylabel( 'Effective bandwidth (Gbyte/s)' );
+		title( 'Comparing all-to-one communication performance of different sizes' );
+		print( "gather-bw", "-deps", "-color" );
+
+		figure(9)
+		bar( bw(:,:,3), 'grouped' );
+		lgnd(7)='MPI bcast';
+		legend( lgnd, 'location', 'NorthWest' );
+		xlabel( 'Communication size' );
+		set( gca, 'XTick', 1:4 );
+		set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+		ylabel( 'Effective bandwidth (Gbyte/s)' );
+		title( 'Comparing one-to-all communication performance of different sizes' );
+		print( "bcast-bw", "-deps", "-color" );
+	end
+
+	if plot_h == 1
+		figure(10);
+		bar( hrel(:,:,1), 'grouped' );
+		lgnd(7)='MPI allgather';
+		legend( lgnd, 'location', 'NorthWest' );
+		xlabel( 'Communication size' );
+		set( gca, 'XTick', 1:4 );
+		set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+		ylabel( 'h-relation completion rate (Gbyte/s)' );
+		title( 'Comparing all-to-all communication performance of different sizes' );
+		print( sprintf('%s-allgather-h',mpiname), "-deps", "-color" );
+
+		figure(11);
+		bar( hrel(:,:,2), 'grouped' );
+		lgnd(7)='MPI gather';
+		legend( lgnd, 'location', 'NorthWest' );
+		xlabel( 'Communication size' );
+		set( gca, 'XTick', 1:4 );
+		set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+		ylabel( 'h-relation completion rate (Gbyte/s)' );
+		title( 'Comparing all-to-one communication performance of different sizes' );
+		print( sprintf('%s-gather-h',mpiname), "-deps", "-color" );
+
+		figure(12);
+		bar( hrel(:,:,3), 'grouped' );
+		lgnd(7)='MPI bcast';
+		legend( lgnd, 'location', 'NorthWest' );
+		xlabel( 'Communication size' );
+		set( gca, 'XTick', 1:4 );
+		set( gca, 'xticklabel', {'L1','L2','L3','RAM'} );
+		ylabel( 'h-relation completion rate (Gbyte/s)' );
+		title( 'Comparing one-to-all communication performance of different sizes' );
+		print( sprintf('%s-bcast-h',mpiname), "-deps", "-color" );
+	end
+
+	figure( 13 );
+	bar( 0:8, streams(1:9) );
+	xlabel( 'Hardware triad kernel' );
+	ylabel( 'Speed (in Gbyte/s)' );
+	title( 'Streaming benchmarks -- higher is better' );
+	print( "streams", "-deps", "-color" );
+
+	figure( 14 );
+	bar( 0:8, streams_stddev(1:9) );
+	xlabel( 'Hardware triad kernel' );
+	ylabel( 'Standard deviation (in Gbyte/s)' );
+	title( 'Stability of the streaming benchmarks -- lower is better' );
+	print( "streams-stddev", "-deps", "-color" );
+
+	figure( 15 );
+	bar( streams(10:end) );
+	xlabel( 'Software triad kernel' );
+	ylabel( 'Speed (in Gbyte/s)' );
+	title( 'Streaming benchmarks -- higher is better' );
+	print( "streams", "-deps", "-color" );
+
+	figure( 16 );
+	bar( streams_stddev(10:end) );
+	xlabel( 'Software triad kernel' );
+	ylabel( 'Standard deviation (in Gbyte/s)' );
+	title( 'Stability of the streaming benchmarks -- lower is better' );
+	print( "streams-stddev", "-deps", "-color" );
+
+	figure( 17 );
+	bar( barrier );
+	set( gca, 'XTick', 1:2 );
+	set( gca, 'xticklabel', {'BSP barrier', 'stddev'} );
+	ylabel( 'time (ms.)' );
+	title( 'Barrier synchronisation benchmark -- lower is better' );
+	print( "barrier", "-deps", "-color" );
+
+end
+

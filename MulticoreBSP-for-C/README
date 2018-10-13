@@ -1,0 +1,68 @@
+This distribution contains:
+
+                 MulticoreBSP for C, version 2.0.3
+         (a port of the original Java-based MulticoreBSP)
+
+Distributed under the GNU LGPL-- see lgpl.txt
+
+Apart from the core library, this distribution contains tests, examples, and
+micro-benchmarking utilities. A list of which files are where follows:
+	-core library:     ./ (root software distribution directory)
+	-tests:            ./tests (to run them, issue `make tests')
+	-examples:         ./examples (to build, issue `cd examples; make')
+	-micro-benchmarks: ./benchmarks (to run, issue `cd benchmarks; make')
+	-compilation and deployment utilities: ./tools
+
+Contents of other directories:
+	./accelerators : plug-in codes for running MulticoreBSP on supported
+                         accelerators.
+	./doxygen      : used for generating code documentation, e.g., via
+                         `cd doxygen; make'.
+
+To create the library, issue `make'. For more advanced compilation options,
+issue `make help'. For more information on the build environment, or to
+configure the build environment, edit `include.mk'. If that file does not
+exist, first issue `make include.mk'. To reset the build environment, simply
+delete the include.mk file.
+The default attempts to use the GNU Compiler Collection for compilation, and
+targets a Linux platform. Alternative presets for the Intel C++ Compiler and
+LLVM Clang are available, as are presets for cross-compilation onto Windows.
+The library should compile for Macintosh/Apple OS X, but has been tested on
+Linux platforms only.
+The Makefile generates the following directories:
+	./include : the public header files for MulticoreBSP development
+	./lib     : the library binaries
+	./tools   : the MulticoreBSP for C bspcc, bspcxx, and bsprun utilities
+
+To ensure optimal performance of MulticoreBSP-enabled software, the deployment
+architecture may require a custom `machine.info' file to override incompatible
+MulticoreBSP defaults. Refer to the `changelog.txt' file for details, or issue
+`make machine.info' to be guided by an interactive command-line utility in
+generating an appropriate machine.info file for your machine.
+
+                                   Warning
+==============================================================================
+Notable architectures incompatible with the MulticoreBSP defaults include any
+Intel platform with hyperthreading enabled; issues only arise when using fewer
+than all hardware threads supported by the architecture, however.
+==============================================================================
+
+Currently tested configurations:
+	-64-bit Linux, Intel Sandy Bridge & Ivy Bridge:
+	 GCC 5.3.0, GCC 4.8.4, Clang 3.7.1, Clang 3.4
+	-64-bit OS X 10.9.5, Intel Haswell
+	 GCC 7.3.0, GCC 5.5.0, GCC 4.9.2, Clang 4.0.1, Clang 3.4.2
+	-64-bit Linux, Intel Kaby Lake:
+	 GCC 7.3.1, Clang 5.0.1
+         DMTCP 2.5.2 (checkpoint support), MPICH 3.2.1 (benchmarks)
+
+A list of changes is maintained in the `changelog.txt' file.
+
+All code is licensed under the GNU Lesser General Public License (LGPL),
+version 3. See the file `lgpl.txt' for details. This software has the 
+following formal copyright holders:
+	-Albert-Jan N. Yzelman (2006-2007),
+	-Utrecht University (2007-2011), 
+	-KU Leuven (2011-2015),
+	-Huawei Technologies (2015-2018).
+
