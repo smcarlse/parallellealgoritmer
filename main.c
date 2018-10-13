@@ -2,7 +2,7 @@
 
 // If build has not defined MAX_PRIMES
 //#ifndef MAX_PRIMES
-#define MAX_PRIMES 100000
+#define MAX_PRIMES 100
 //#endif // !MAX_PRIMES
 #define MAX_PRIMES_ROOT sqrt(MAX_PRIMES)
 
@@ -63,8 +63,6 @@ void spmd() {
     	if (sample[i] == 0) {
     		continue;
     	} else {
-    		/*if (pid == 1 && i ==4)
-    			continue;*/
 			int globalStart = i*2;
 			int blockSize;
 			if (pid % 2 != 0) {
@@ -104,41 +102,11 @@ void spmd() {
     }
     printf("Number of primes%d prosessor %d\n", sum, pid);
 
-	bsp_end();
-
-
-	//printf("Time crossed out: %f\n", bsp_time() - start);		
-
-	//bsp_push_reg(primes + myStart, blockSize);
-
-	//bsp_sync();	
-
-	/*// Send data to other processors		
-	// Calculate range of blocks
-	int leftBlock = rangeStart / BLOCK_SIZE;
-	int rightBlock = ceil(rangeEnd / (double)BLOCK_SIZE);
-	
-	//Get the relevant array
-	int* partial = &primesArray[leftBlock];
-
-	for (int i = 0; i < cores; i++) {		
-		bsp_put(i, partial, vector, leftBlock * sizeof(BitBlock), (rightBlock - leftBlock) * sizeof(BitBlock));				
-	}
-	bsp_sync();
-	
-	//Merge preprocessed primes into the result
-	for (int i = 0; i < bitarray_blocks(MAX_PRIMES_ROOT); i++) {						
-		vector[i] |= preprocess[i];
-	}
-
-	printf("Total time: %f\n", bsp_time() - start);
-	int amount = countPrimes(vector, MAX_PRIMES);
-	printf("Amount of primes: %d\n", amount);
 	
 	// Print out twin primes
 	if (pid == 0) {
 		for (int i = 2; i < MAX_PRIMES-2; i++) {
-			if (bitarray_get(vector, i) == 0 && bitarray_get(vector, i + 2) == 0 ) {
+			if (vector[i] == 1 && vector[i + 2] == 1 ) {
 				printf("%d:%d, ", i, i+2);
 			}
 		}
@@ -150,21 +118,21 @@ void spmd() {
 		printGoldBachArray(bacharray, MAX_PRIMES);
 	}
 
-	// Clean up memory	
-	free(primesArray);
-	free(preprocess);
-	bsp_end();*/
+    // Clean up memory	
+	free(vector);
+	bsp_end();
+
 }
 
-struct GoldBach* createGoldBachPairs(Bitarray primes, int upperBound) {
+struct GoldBach* createGoldBachPairs(bool* primes, int upperBound) {
 	
 	struct GoldBach* bacharray = (struct GoldBach*)malloc(sizeof(struct GoldBach) * upperBound / 2);
 	bacharray[4 / 2] = (struct GoldBach){ 2, 2 };
 
 	for (int i = 2; i < upperBound / 2; i++) {
-		if (bitarray_get(primes, i)) continue;
+		if (! primes[i]) continue;
 		for (int j = i; i + j < upperBound; j++) {
-			if (bitarray_get(primes, j)) continue;
+			if (! primes[j]) continue;
 
 			//i and j are both primes,
 			bacharray[(i + j) / 2] = (struct GoldBach) { i, j };
