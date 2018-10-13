@@ -30,8 +30,6 @@ int main( int argc, char ** argv ) {
     return EXIT_SUCCESS;
 }
 
-int numberOfSyncs[2] = {0,0};
-bool done[2] = {0,0};
 
 void spmd() {
 	int cores = CORES;
@@ -88,23 +86,12 @@ void spmd() {
 				bsp_put(j, sample + myStart, vector, myStart, blockSize);
 				bsp_sync();
 				bsp_get(j, vector, 0, sample, MAX_PRIMES);
-			}numberOfSyncs[pid]++;
-			if (i == MAX_PRIMES / 2 -1){
-				done[pid] = 1;
 			}
 			bsp_sync();
 			
     	}
     	
     }
-    printf("numbers of sync %d, %d\n",numberOfSyncs[0], numberOfSyncs[1] );
-    /*while(numberOfSyncs[0] == numberOfSyncs[1] && !done[1]) {
-    	printf("TESSTTTT numbers of sync %d, %d\n",numberOfSyncs[0], numberOfSyncs[1] );
-    	bsp_sync();
-    	numberOfSyncs[pid]++;
-    }*/
-
-    //bsp_sync();
 
     printf("Total time: %f\n", bsp_time() - start);
 
