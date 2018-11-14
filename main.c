@@ -1,15 +1,9 @@
 #include "main.h"
 
-// If build has not defined MAX_PRIMES
-//#ifndef MAX_PRIMES
-#define MAX_PRIMES 100
-//#endif // !MAX_PRIMES
-#define MAX_PRIMES_ROOT sqrt(MAX_PRIMES)
+#define MAX_PRIMES 1000
 
-// If build has not defined CORES
-//#ifndef CORES
 #define CORES 2
-//#endif
+
 int crossOuts = 0;
 bool primes[MAX_PRIMES];
 
@@ -72,12 +66,7 @@ void spmd() {
 			}
 			int myStart = globalStart + blockSize * pid;
 			int myEnd = myStart + blockSize;
-			/*while(myStart % i != 0) {
-				myStart++;
-			}
-			if (myStart >= MAX_PRIMES|| myEnd == myStart){
-				continue;
-			}*/
+
     		crossOutMultiples(sample, myStart, myEnd, i, pid);
 			for (int j = 0; j < cores; j++) {
 				//printf("mystart:%d\n", sample[myStart]);
@@ -115,7 +104,6 @@ void spmd() {
 	// Print out goldbach primes
 	if (pid == 0) {
 		struct GoldBach* bacharray = createGoldBachPairs(vector, MAX_PRIMES);
-		printGoldBachArray(bacharray, MAX_PRIMES);
 	}
 
     // Clean up memory	
@@ -133,7 +121,6 @@ struct GoldBach* createGoldBachPairs(bool* primes, int upperBound) {
 		if (! primes[i]) continue;
 		for (int j = i; i + j < upperBound; j++) {
 			if (! primes[j]) continue;
-
 			//i and j are both primes,
 			bacharray[(i + j) / 2] = (struct GoldBach) { i, j };
 		}

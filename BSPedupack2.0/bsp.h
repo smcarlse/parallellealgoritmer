@@ -1,0 +1,1 @@
+../MulticoreBSP-for-C/include/bsp.h

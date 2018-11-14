@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include "MulticoreBSP-for-C/include/bsp.h"
-#include "bitarray.c"
 #include <stdbool.h>
 
 void spmd();

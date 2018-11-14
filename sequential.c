@@ -4,8 +4,7 @@
 #include <time.h>
 #include <stdbool.h>
 
-#define MAX_PRIMES 1000000
-#define MAX_PRIMES_ROOT sqrt(MAX_PRIMES)
+#define MAX_PRIMES 100000
 
 #define DEBUG
 
@@ -37,7 +36,6 @@ int main( int argc, char ** argv ) {
     		crossOutMultiples(primes, i);
     	}
     }
-    
     clock_t time = clock() - start;
 
     int sum = 0;
