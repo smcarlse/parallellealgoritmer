@@ -22,12 +22,12 @@ void bspsort(double *x, long n, long *nlout){
 
     long p= bsp_nprocs(); // p = number of processors obtained
     long s= bsp_pid();    // s = processor number
-    if (p*p > n)
-        bsp_abort("Error: bspsort only works if p*p <= n \n");
+    if (2*p*p > n)
+        bsp_abort("Error: bspsort only works if 2*p*p <= n \n");
 
     /* Allocate and register */
-    double *Sample= vecallocd(p*p);
-    bsp_push_reg(Sample,p*p*sizeof(double));
+    double *Sample= vecallocd(2*p*p);
+    bsp_push_reg(Sample,2*p*p*sizeof(double));
 
     /* Set tag size, where tag will store the sender pid */
     size_t tag_size = sizeof(long);
@@ -41,23 +41,29 @@ void bspsort(double *x, long n, long *nlout){
     qsort (x,nl,sizeof(double),compare_doubles);
 
     /* Determine p (nearly) equally spaced samples */
-    long nlp= nl/p ;                 // nlp >= 1 because nl >= p
-    for (long i=0; i <= nl%p ; i++)    
+    int count = 0;
+    long nlp= nl/(2*p) ;               // nlp >= 1 because nl >= p
+    for (long i=0; i <= nl%(2*p) ; i++) { 
+        count++;
         Sample[i]= x[i*(nlp+1)];     // subblocks of size nlp+1 
-    for (long i= nl%p+1; i<p ; i++)  
-        Sample[i]= x[i*nlp + nl%p] ; // subblocks of size nlp 
+    }
+    for (long i= nl%p+1; i<(2*p) ; i++)  {
+        count++;
+        Sample[i]= x[i*nlp + nl%(2*p)] ; // subblocks of size nlp 
+    }
+    printf(" sa mange samples hadde jeg %d, processor %d \n", count,s);
     
     /* Put samples in P(*) */
     for (long t=0; t<p ; t++)
-        bsp_put(t,Sample,Sample,s*p*sizeof(double),
-                p*sizeof(double));
+        bsp_put(t,Sample,Sample,s*2*p*sizeof(double),
+                2*p*sizeof(double));
     bsp_sync();
 
     /****** Superstep (2)/(3) ******/
 
     /* Copy weight of samples */
-    Item *SampleItem= vecallocitem(p*p);
-    for (long i=0; i < p*p ; i++)
+    Item *SampleItem= vecallocitem(2*p*p);
+    for (long i=0; i < 2*p*p ; i++)
         SampleItem[i].weight= Sample[i];
 
     /* Add global index to samples */
@@ -73,7 +79,7 @@ void bspsort(double *x, long n, long *nlout){
             blocktotal_s= blocktotal_t; // keep for later use
 
         /* Determine global index of samples of P(t) */
-        long ntp= nt/p;
+        long ntp= nt/(2*p);
         for (long i=0; i <= nt%p ; i++)
             SampleItem[t*p+i].index= blocktotal_t + i*(ntp+1);
         for (long i= nt%p+1; i<p ; i++)
@@ -81,10 +87,10 @@ void bspsort(double *x, long n, long *nlout){
     }
 
     /* Sort samples with their indices */
-    long *start= vecalloci(p+1);
+    long *start= vecalloci(2*p+1);
     for (long t=0; t<p ; t++)
         start[t]= t*p;
-    start[p]= p*p;
+    start[p]= 2*p*p;
     mergeparts ((void *)SampleItem,start,p,sizeof(Item),
                 compare_items);
 
