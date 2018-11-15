@@ -136,6 +136,75 @@ void mergeparts(char *x, long *start, long p, size_t size,
 } /* end mergeparts */
 
 
+void bspsort_realdata(){
+  void bspsort(double *x, long n, long *nlout);
+  bsp_begin(P);
+  long p= bsp_nprocs();
+  long s= bsp_pid();
+
+  long n = 450;
+
+  bsp_push_reg(&n,sizeof(long));
+  bsp_sync();
+
+  bsp_get(0,&n,0,&n,sizeof(long));
+  bsp_sync();
+  bsp_pop_reg(&n);
+
+  /* Initialize array of doubles */ 
+  long nl = nloc(p,s,n); // number of local elements 
+  long nl0 = nloc(p,0,n); // maximum number of local elements of a processor
+  double *x= vecallocd(2*nl0+p);
+  bsp_push_reg(x, (2*nl0+p)*sizeof(double));
+
+  /* Read data from file and save to array x */
+  int index = 0;
+  static const char filename[] = "folketelling.txt";
+  FILE *file = fopen ( filename, "r" );
+  if ( file != NULL )
+   {
+      char value[20]; /* or other suitable maximum line size */
+      while ( fgets ( value, sizeof(value), file ) != NULL ) /* read a line */
+      {
+        x[index] = strtod(value, NULL); /* write the line */
+        index++;
+      }
+      fclose ( file );
+   }
+  else
+   {
+      perror ( filename ); /* why didn't the file open? */
+   }
+
+  bsp_sync(); 
+  double time0= bsp_time();
+
+  long nlout= 0;
+  bspsort(x,n,&nlout);
+  bsp_sync();  
+  double time1= bsp_time();
+
+  /* Check if the values of x are indeed in increasing order */
+  for (long i=0; i<nlout-1; i++){
+    if (x[i] > x[i+1])
+        bsp_abort("Processor %ld: output is not sorted correctly \n",s);
+  }
+
+  printf("Processor %ld: number of elements = %ld \n",s,nlout);
+  fflush(stdout);
+  if (nlout>0){
+    printf("Processor %ld: first element = %.6lf last element = %.6lf \n",
+            s,x[0],x[nlout-1]); fflush(stdout);
+  }
+  if (s==0)
+    printf("This took only %.6lf seconds.\n", time1-time0);
+
+  bsp_pop_reg(x);
+  vecfreed(x);
+  bsp_end();
+
+
+}
 
 void bspsort_test(){
     
@@ -226,7 +295,7 @@ int main(int argc, char **argv){
     printf("Using %ld processors\n", P); fflush(stdout);
         
     /* SPMD part */
-    bspsort_test();
+    bspsort_realdata();
 
     /* sequential part */
     exit(EXIT_SUCCESS);

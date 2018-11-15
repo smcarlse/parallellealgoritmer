@@ -62,9 +62,30 @@ void bspsort(double *x, long n, long *nlout){
     /****** Superstep (2)/(3) ******/
 
     /* Copy weight of samples */
-    Item *SampleItem= vecallocitem(2*p*p);
-    for (long i=0; i < 2*p*p ; i++)
-        SampleItem[i].weight= Sample[i];
+    int countless = 0;
+    int countmore = 0;
+    int sampleIndex = 0;
+    for (long i=0; i < 2*p*p ; i++) {
+        if (Sample[i]<x[s*n/p]){
+            countless++;
+        }else if(Sample[i]>x[s*n/p+nl-1]){
+            countmore++;
+        }else{
+            //SampleItem[sampleIndex].weight= Sample[i];
+            sampleIndex++;
+        }
+    }
+
+    //printf("processor %d, countmore %d, countless %d \n", s, countmore, countless);
+
+    Item *SampleItem= vecallocitem(sampleIndex + 2);
+    int ny = 0;
+    for (long i=0; i < 2*p*p ; i++) {
+        if (Sample[i]>=x[s*n/p] && Sample[i]<=x[s*n/p+nl-1]){
+            SampleItem[ny].weight= Sample[i];
+            ny++;
+        }
+    }
 
     /* Add global index to samples */
     long blocktotal_s=0; // size of all blocks of processors < s
@@ -81,9 +102,9 @@ void bspsort(double *x, long n, long *nlout){
         /* Determine global index of samples of P(t) */
         long ntp= nt/(2*p);
         for (long i=0; i <= nt%p ; i++)
-            SampleItem[t*p+i].index= blocktotal_t + i*(ntp+1);
+            SampleItem[t*p+i].index= blocktotal_t + (i + countless)*(ntp+1);
         for (long i= nt%p+1; i<p ; i++)
-            SampleItem[t*p+i].index= blocktotal_t + i*ntp + nt%p;
+            SampleItem[t*p+i].index= blocktotal_t + (i + countless)*ntp + nt%p;
     }
 
     /* Sort samples with their indices */
