@@ -295,7 +295,7 @@ int main(int argc, char **argv){
     printf("Using %ld processors\n", P); fflush(stdout);
         
     /* SPMD part */
-    bspsort_realdata();
+    bspsort_test();
 
     /* sequential part */
     exit(EXIT_SUCCESS);

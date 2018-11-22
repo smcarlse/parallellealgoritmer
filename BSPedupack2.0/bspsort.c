@@ -40,14 +40,20 @@ void bspsort(double *x, long n, long *nlout){
     long nl= nloc(p,s,n); // number of local elements
     qsort (x,nl,sizeof(double),compare_doubles);
 
-    /* Determine p (nearly) equally spaced samples */
+
+    for (long i=0; i<nl - 1; i++){
+        if (x[i] > x[i+1])
+            bsp_abort("quick Processor %ld: output is not sorted correctly \n",s);
+    }
+
+    /* Determine 2*p (nearly) equally spaced samples */
     int count = 0;
     long nlp= nl/(2*p) ;               // nlp >= 1 because nl >= p
     for (long i=0; i <= nl%(2*p) ; i++) { 
         count++;
         Sample[i]= x[i*(nlp+1)];     // subblocks of size nlp+1 
     }
-    for (long i= nl%p+1; i<(2*p) ; i++)  {
+    for (long i= nl%(2*p)+1; i<(2*p) ; i++)  {
         count++;
         Sample[i]= x[i*nlp + nl%(2*p)] ; // subblocks of size nlp 
     }
@@ -62,30 +68,17 @@ void bspsort(double *x, long n, long *nlout){
     /****** Superstep (2)/(3) ******/
 
     /* Copy weight of samples */
-    int countless = 0;
-    int countmore = 0;
-    int sampleIndex = 0;
+    int newListLength = 0;
+    Item *SampleItem= vecallocitem(2*p*p);
     for (long i=0; i < 2*p*p ; i++) {
-        if (Sample[i]<x[s*n/p]){
-            countless++;
-        }else if(Sample[i]>x[s*n/p+nl-1]){
-            countmore++;
-        }else{
-            //SampleItem[sampleIndex].weight= Sample[i];
-            sampleIndex++;
+        SampleItem[i].weight = Sample[i];
+        printf("sample[i] %lf x[0] %lf x[nl-1] %lf\n", Sample[i], x[0], x[nl-1] );
+        if (Sample[i] >= x[0] && Sample[i] <= x[nl-1]) {
+            newListLength++;
         }
     }
 
-    //printf("processor %d, countmore %d, countless %d \n", s, countmore, countless);
 
-    Item *SampleItem= vecallocitem(sampleIndex + 2);
-    int ny = 0;
-    for (long i=0; i < 2*p*p ; i++) {
-        if (Sample[i]>=x[s*n/p] && Sample[i]<=x[s*n/p+nl-1]){
-            SampleItem[ny].weight= Sample[i];
-            ny++;
-        }
-    }
 
     /* Add global index to samples */
     long blocktotal_s=0; // size of all blocks of processors < s
@@ -102,23 +95,69 @@ void bspsort(double *x, long n, long *nlout){
         /* Determine global index of samples of P(t) */
         long ntp= nt/(2*p);
         for (long i=0; i <= nt%p ; i++)
-            SampleItem[t*p+i].index= blocktotal_t + (i + countless)*(ntp+1);
+            SampleItem[t*p+i].index= blocktotal_t + i*(ntp+1);
         for (long i= nt%p+1; i<p ; i++)
-            SampleItem[t*p+i].index= blocktotal_t + (i + countless)*ntp + nt%p;
+            SampleItem[t*p+i].index= blocktotal_t + i*ntp + nt%p;
     }
 
-    /* Sort samples with their indices */
-    long *start= vecalloci(2*p+1);
-    for (long t=0; t<p ; t++)
-        start[t]= t*p;
-    start[p]= 2*p*p;
-    mergeparts ((void *)SampleItem,start,p,sizeof(Item),
+
+/* Sort samples with their indices */
+    long *start= vecalloci(p+1);
+    Item *filteredSamples = vecallocitem(newListLength);
+    printf("new list length %d\n",newListLength );
+    long filterIndex = 0;
+    int processorNum = 0;
+    int countless = 0;
+    // printf("pros nr. %d x(o) %lo x(nl) %lo\n",s,x[0],x[nl-1] );
+    for (int t = 0; t < p; t++) {
+        start[t] = filterIndex;
+        printf("filterIndex %d, pro %d, t %d\n", filterIndex, s, t);
+        for (int i = t*2*p; i < (t+1)*2*p; i++){
+            if (Sample[i] >= x[0] && Sample[i] <= x[nl-1]) {
+                filteredSamples[filterIndex].weight = Sample[i];
+                printf("filteredSamples[filterIndex] %lf pro %d\n", filteredSamples[filterIndex].weight, s);
+                filteredSamples[filterIndex].index = SampleItem[i].index;
+                filterIndex++;
+            } else if (Sample[i] < x[0]){
+                countless++;
+            }
+
+        }        
+    }
+    start[p] = newListLength;
+    printf("filter index %d\n",filterIndex );
+
+    for (long i=0; i<newListLength; i++){
+        printf("foooooor TEST :: %lf prosessor %d\n", filteredSamples[i].weight, s);
+        //if (filteredSamples[i].weight > filteredSamples[i+1].weight)
+            //bsp_abort("44 Processor %ld: output is not sorted correctly \n",s);
+    }
+    mergeparts ((void *)filteredSamples,start,p,sizeof(Item),
                 compare_items);
 
+    for (long i=0; i<newListLength; i++){
+        printf("TEST :: %lf prosessor %d\n", filteredSamples[i].weight, s);
+        //if (filteredSamples[i].weight > filteredSamples[i+1].weight)
+            //bsp_abort("44 Processor %ld: output is not sorted correctly \n",s);
+    }
+
     /* Choose p equidistant splitters from the samples */
+    int countmore = countless;
     Item *Splitter= vecallocitem(p);
-    for (long t=0; t<p ; t++)
-        Splitter[t]= SampleItem[t*p] ;
+    for (long t=0; t<p ; t++) {
+        if (countless > 0) {
+            Splitter[t] = filteredSamples[0];
+            countless -= 2*p;
+        } else if (2*t*p > countless + newListLength){
+            Splitter[t] = filteredSamples[0];
+        } else {
+            Splitter[t]= filteredSamples[2*t*p - countmore];
+        }   
+    }
+
+    for (int i = 0; i < p; i++) {
+        printf("pro %d Splitter %lf\n",s, Splitter[i].weight );
+    }
 
     /* Send the values */
     long i= 0;
