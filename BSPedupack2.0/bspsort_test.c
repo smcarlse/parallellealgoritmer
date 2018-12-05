@@ -142,8 +142,11 @@ void bspsort_realdata(){
   long p= bsp_nprocs();
   long s= bsp_pid();
 
-  long n = 450;
-
+  long n;
+  if (s==0) {
+    n = 1000000;
+  }
+  
   bsp_push_reg(&n,sizeof(long));
   bsp_sync();
 
@@ -158,15 +161,16 @@ void bspsort_realdata(){
   bsp_push_reg(x, (2*nl0+p)*sizeof(double));
 
   /* Read data from file and save to array x */
+  double *filearray = vecallocd(n);
   int index = 0;
-  static const char filename[] = "folketelling.txt";
+  static const char filename[] = "halloi.txt";
   FILE *file = fopen ( filename, "r" );
   if ( file != NULL )
    {
-      char value[20]; /* or other suitable maximum line size */
-      while ( fgets ( value, sizeof(value), file ) != NULL ) /* read a line */
+      char value[10]; /* or other suitable maximum line size */
+      while ( fgets ( value, sizeof(value), file ) != NULL && index < n) /* read a line */
       {
-        x[index] = strtod(value, NULL); /* write the line */
+        filearray[index] = strtod(value, NULL); /* write the line */
         index++;
       }
       fclose ( file );
@@ -175,6 +179,11 @@ void bspsort_realdata(){
    {
       perror ( filename ); /* why didn't the file open? */
    }
+
+   for (int i = 0; i < nl; i++){
+      x[i] = filearray[s*nl+i];
+   }
+
 
   bsp_sync(); 
   double time0= bsp_time();
@@ -201,6 +210,7 @@ void bspsort_realdata(){
 
   bsp_pop_reg(x);
   vecfreed(x);
+  vecfreed(filearray);
   bsp_end();
 
 
@@ -237,11 +247,14 @@ void bspsort_test(){
     double *x= vecallocd(2*nl0+p);
     bsp_push_reg(x, (2*nl0+p)*sizeof(double));
 
+    printf("NL:::: %ld nl0 %ld pro %ld\n", nl, nl0, s);
+
+
     /* Generate random number in range [0,1] as input */
     for (long i=0; i<nl; i++)
         x[i]= (double)rand() / (double)RAND_MAX;
 
-    bsp_sync(); 
+    bsp_sync();
     double time0= bsp_time();
 
     long nlout= 0;
